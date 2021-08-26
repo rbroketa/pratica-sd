@@ -1,7 +1,7 @@
 from setuptools import setup
 
 setup(
-    name='sistemas distribuidos microservice',
+    name='sd-microservice',
     description='Projeto para matéria de Sistemas Distribuídos do curso de Ciência da Computação',
     author='Robert Broketa',
     install_requires=['fastapi', 'uvicorn'],

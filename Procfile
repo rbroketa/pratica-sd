@@ -1,1 +1,1 @@
-web: uvicorn app.main:app
+web: pratica-sd
