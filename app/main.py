@@ -2,7 +2,7 @@ import os
 from fastapi import FastAPI
 from uvicorn import Config, Server
 
-PORT = int(os.environ.get('PORT', '8000'))
+PORT = int(os.getenv('PORT', '8000'))
 app = FastAPI()
 
 
