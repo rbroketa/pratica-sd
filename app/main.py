@@ -2,33 +2,41 @@ import os
 from fastapi import FastAPI
 from uvicorn import Config, Server
 
-PORT = int(os.getenv('PORT', '8000'))
+PORT = int(os.getenv("PORT", "8000"))
 app = FastAPI()
 
 
-@app.get('/hello')
+@app.get("/")
+def index(name=None):
+    if name:
+        return f"Hello {name}!"
+    else:
+        return "Hello World!"
+
+
+@app.get("/hello")
 def app_get(name=None):
     if name:
-        return f'Hello {name}!'
+        return f"Hello {name}!"
     else:
-        return 'Hello World!'
+        return "Hello World!"
 
 
-@app.get('/clientes')
+@app.get("/clientes")
 def app_clientes_get():
-    return ['Mathias', 'José', 'Thiago']
+    return ["Mathias", "José", "Thiago"]
 
 
-@app.post('/')
+@app.post("/")
 def app_post():
-    return 'Hello Post!'
+    return "Hello Post!"
 
 
 def main():
-    config = Config(app=app, host='0.0.0.0', port=PORT, debug=True)
+    config = Config(app=app, host="0.0.0.0", port=PORT, debug=True)
     server = Server(config=config)
     server.run()
 
 
-if __name__ == '__main__':
+if __name__ == "__main__":
     main()
