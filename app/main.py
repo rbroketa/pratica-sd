@@ -13,7 +13,7 @@ def index():
         "routes": {
             "GET": {
                 "/": "This page",
-                "/itens": "List of fruits",
+                "/fruits": "List of fruits",
                 "/clients": "List of Clients"
             },
             "POST": {
