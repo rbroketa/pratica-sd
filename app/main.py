@@ -13,6 +13,7 @@ def index():
         "routes": {
             "GET": {
                 "/": "This page",
+                "/resolver/{name}": "IP of {name}'s service",
                 "/fruits": "List of fruits",
                 "/clients": "List of Clients"
             },
@@ -33,11 +34,9 @@ def resolver_():
 def resolver(name: str = None):
     if name is None:
         return {
-            "ips": [
-                {
-                    "Robert": "https://pratica-sd.herokuapp.com/"
-                }
-            ]
+            "ips": {
+                "Robert": "https://pratica-sd.herokuapp.com/"
+            }
         }
     elif name.lower() == "robert":
         return {
