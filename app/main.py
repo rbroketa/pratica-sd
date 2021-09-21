@@ -24,6 +24,31 @@ def index():
     }
 
 
+@app.get("/resolver")
+def resolver_():
+    return resolver()
+
+
+@app.get("/resolver/{name}")
+def resolver(name: str = None):
+    if name is None:
+        return {
+            "ips": [
+                {
+                    "Robert": "https://pratica-sd.herokuapp.com/"
+                }
+            ]
+        }
+    elif name.lower() == "robert":
+        return {
+            "ip": "https://pratica-sd.herokuapp.com/"
+        }
+    else:
+        return {
+            "ip": "IP not available for {}'s service".format(name.capitalize())
+        }
+
+
 @app.get("/fruits")
 def app_get():
     return ["Apple", "Banana", "Orange"]
