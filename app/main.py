@@ -1,10 +1,16 @@
 import os
-import json
+from typing import Dict
+from pydantic import BaseModel
 from fastapi import FastAPI
 from uvicorn import Config, Server
 
 PORT = int(os.getenv("PORT", "8000"))
 app = FastAPI()
+
+
+class Body(BaseModel):
+    operacao: str
+    arguments: Dict[str, str]
 
 
 @app.get("/")
@@ -13,39 +19,29 @@ def index():
         "routes": {
             "GET": {
                 "/": "This page",
-                "/resolver/{name}": "IP of {name}'s service",
                 "/fruits": "List of fruits",
-                "/clients": "List of Clients"
+                "/clients": "List of Clients",
             },
             "POST": {
-                "/echo": "Echoes the passed parameter"
-            }
-
-        }
+                "/echo": "Echoes the passed parameter",
+                "/resolver": {
+                    "body": {
+                        "resolver": "operacao",
+                        "nome": "name of the person to match a service url",
+                    },
+                    "response": {"url": "url of the service of the matched name"},
+                },
+            },
+        },
     }
 
 
-@app.get("/resolver")
-def resolver_():
-    return resolver()
-
-
-@app.get("/resolver/{name}")
-def resolver(name: str = None):
-    if name is None:
-        return {
-            "ips": {
-                "Robert": "https://pratica-sd.herokuapp.com/"
-            }
-        }
-    elif name.lower() == "robert":
-        return {
-            "ip": "https://pratica-sd.herokuapp.com/"
-        }
-    else:
-        return {
-            "ip": "IP not available for {}'s service".format(name.capitalize())
-        }
+@app.post("/resolver")
+def resolver(body: Body):
+    if body.operacao == "resolver":
+        nome = body.arguments.get("nome")
+        if nome.lower() == "robert":
+            return {"url": "https://pratica-sd.herokuapp.com/"}
 
 
 @app.get("/fruits")
