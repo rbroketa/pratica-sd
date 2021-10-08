@@ -4,6 +4,7 @@ from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 from uvicorn import Config, Server
 from dataclasses import dataclass
+from enum import Enum
 
 PORT = int(os.getenv("PORT", "8000"))
 app = FastAPI()
@@ -43,14 +44,14 @@ class InfoBody:
 
 
 @dataclass
-class PeerBody:
-    id: str
-    nome: str
-    url: str
+class Valid(Enum):
+    VALID = 0b00
+    INVALID = 0b01
+    DUPLICATE = 0b10
 
 
 glInfo = InfoBody()
-glPeers: list[PeerBody] = [
+glPeers = [
     {
         "id": "201720295",
         "nome": "Allana Dos Santos Campos",
@@ -109,6 +110,23 @@ glPeers: list[PeerBody] = [
 ]
 
 
+def is_peer_valid(peer: dict[str, str]) -> Valid:
+    for (k, v) in peer.items():
+        if k != "id" and k != "nome" and k != "url":
+            return Valid.INVALID
+
+        if k == "id" or k == "nome" or k == "url":
+            if k == "nome" and v.isdigit():
+                return Valid.INVALID
+            if k == "url" and not v.startswith("http"):
+                return Valid.INVALID
+    try:
+        glPeers.index(peer)
+        return Valid.DUPLICATE
+    except ValueError:
+        return Valid.VALID
+
+
 @app.get("/")
 def index():
     return {
@@ -151,6 +169,50 @@ def update_info(body: InfoBody):
 @app.get("/peers")
 def get_peers():
     return glPeers
+
+
+@app.get("/peers/{id}")
+def get_peer(id: str):
+    for d in glPeers:
+        if d.get("id") == id:
+            return d
+    raise HTTPException(404, f"Não encontrado peer com id: {id}")
+
+
+@app.post("/peers")
+def add_peer(body: dict[str, str]):
+    valid = is_peer_valid(body)
+    if valid.value == Valid.VALID.value:
+        glPeers.append(body)
+    elif valid.value == Valid.INVALID.value:
+        raise HTTPException(400, "Dados mal formatados")
+    else:
+        raise HTTPException(409, "Já existe um peer com esse id ou nome")
+
+
+@app.put("/peers/{id}")
+def update_peer(id: str, body: dict[str, str]):
+    if is_peer_valid(body).value == Valid.INVALID.value:
+        raise HTTPException(422, f"Dados invalidos")
+
+    for d in glPeers:
+        if d.get("id") == id:
+            d.update(body)
+            return body
+    raise HTTPException(404, f"Não encontrado peer com id: {id}")
+
+
+@app.delete("/peers/{id}")
+def delete_peer(id: str):
+    idx = -1
+    for (i, d) in enumerate(glPeers):
+        if d.get("id") == id:
+            idx = i
+            break
+    if idx == -1:
+        raise HTTPException(404, f"Não encontrado peer com id: {id}")
+    glPeers.pop(idx)
+
 
 @app.post("/resolver")
 def resolver(body: ResolverBody):
