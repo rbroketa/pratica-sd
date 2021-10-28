@@ -210,6 +210,9 @@ def put_recurso(body: RecursoBody):
         )
     recurso.valor = body.valor
     recurso.validade = datetime.now()
+
+    recursos[recurso._uuid] = recurso
+
     return {"codigo_de_acesso": recurso._uuid, "valor": recurso.valor}
 
 
