@@ -1,10 +1,14 @@
 import os
-from typing import Dict
+import random
+import time
+from typing import Dict, Optional
+from uuid import UUID, uuid4
 from pydantic import BaseModel
 from fastapi import FastAPI, HTTPException
 from uvicorn import Config, Server
 from dataclasses import dataclass
 from enum import Enum
+from datetime import datetime, timedelta
 
 PORT = int(os.getenv("PORT", "8000"))
 app = FastAPI()
@@ -13,6 +17,22 @@ app = FastAPI()
 class ResolverBody(BaseModel):
     operacao: str
     arguments: Dict[str, str]
+
+
+@dataclass
+class RecursoBody:
+    codigo_de_acesso: str
+    _uuid: Optional[UUID] = None
+    valor: Optional[int] = None
+    validade: Optional[datetime] = None
+    # constructor
+    def __init__(self, codigo_de_acesso: UUID, valor: int, validade: datetime) -> None:
+        self._uuid = codigo_de_acesso
+        self.valor = valor
+        self.validade = validade
+
+
+EXPIRACAO = 5
 
 
 @dataclass
@@ -49,6 +69,8 @@ class Valid(Enum):
     INVALID = 0b01
     DUPLICATE = 0b10
 
+
+recursos: dict[UUID, RecursoBody] = {}
 
 glInfo = InfoBody()
 glPeers = [
@@ -148,6 +170,89 @@ def index():
             },
         },
     }
+
+
+def recurso_expirou(validade: datetime) -> bool:
+    return datetime.now() - validade >= timedelta(seconds=EXPIRACAO)
+
+
+@app.get("/recurso")
+def get_recurso(body: RecursoBody):
+    try:
+        recurso = recursos.get(UUID(body.codigo_de_acesso))
+    except ValueError:
+        raise HTTPException(status_code=401, detail="Chave inválida")
+    if recurso is None or recurso_expirou(recurso.validade):
+        raise HTTPException(
+            status_code=401, detail="Recurso expirado ou não encontrado"
+        )
+    return {"valor": recurso.valor}
+
+
+@app.delete("/recurso")
+def delete_recurso(body: RecursoBody):
+    recurso = recursos.get(UUID(body.codigo_de_acesso))
+    if recurso is None:
+        raise HTTPException(status_code=410, detail="Recurso não existe")
+
+    del recursos[recurso._uuid]
+
+    if recurso_expirou(recurso.validade):
+        raise HTTPException(status_code=410, detail="Recurso expirado")
+
+
+@app.put("/recurso")
+def put_recurso(body: RecursoBody):
+    recurso = recursos.get(UUID(body.codigo_de_acesso))
+    if recurso is None or recurso_expirou(recurso.validade):
+        raise HTTPException(
+            status_code=401, detail="Recurso expirado ou não encontrado"
+        )
+    recurso.valor = body.valor
+    recurso.validade = datetime.now()
+    return {"codigo_de_acesso": recurso._uuid, "valor": recurso.valor}
+
+
+@app.post("/recurso")
+def post_recurso(body: RecursoBody = None):
+    if body is None:
+        uid = uuid4()
+        validade = datetime.now() + timedelta(seconds=EXPIRACAO)
+        recursos[uid] = RecursoBody(
+            codigo_de_acesso=uid,
+            valor=random.randint(1, 1000),
+            validade=validade,
+        )
+        return {"codigo_de_acesso": uid, "validade": validade}
+    else:
+        # get recurso from dict
+        recurso = recursos.get(UUID(body.codigo_de_acesso))
+        # raise exception with code 409 if recurso is not None and recurso validade is now plus EXPIRACAO seconds
+        if recurso is not None:
+            if recurso.validade is not None and not recurso_expirou(recurso.validade):
+                recurso.validade = datetime.now()
+                recursos[recurso._uuid] = recurso
+                raise HTTPException(status_code=409, detail="Recurso em uso")
+
+            if body.valor is not None:
+                recurso.valor = body.valor
+            # update recurso validade
+            recurso.validade = datetime.now()
+            # update dict
+            recursos[recurso._uuid] = recurso
+            return {
+                "codigo_de_acesso": recurso._uuid,
+                "validade": recurso.validade,
+            }
+        else:
+            uid = uuid4()
+            validade = datetime.now() + timedelta(seconds=EXPIRACAO)
+            recursos[uid] = RecursoBody(
+                codigo_de_acesso=uid,
+                valor=random.randint(1, 1000),
+                validade=validade,
+            )
+            return {"codigo_de_acesso": uid, "validade": validade}
 
 
 @app.get("/info")
